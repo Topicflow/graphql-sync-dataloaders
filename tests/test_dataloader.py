@@ -1,4 +1,3 @@
-from unittest import mock
 from unittest.mock import Mock
 from functools import partial
 
