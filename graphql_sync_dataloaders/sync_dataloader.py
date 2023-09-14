@@ -1,4 +1,6 @@
-from typing import List, Callable
+from collections import defaultdict
+import threading
+from typing import Dict, List, Callable
 from graphql.pyutils import is_collection
 
 from .sync_future import SyncFuture
@@ -10,6 +12,7 @@ class DataloaderBatchCallbacks:
     equivalent to the async `loop.call_soon` functionality and enables the
     batching functionality of dataloaders.
     """
+
     _callbacks: List[Callable]
 
     def __init__(self) -> None:
@@ -24,7 +27,10 @@ class DataloaderBatchCallbacks:
             callbacks.pop(0)()
 
 
-dataloader_batch_callbacks = DataloaderBatchCallbacks()
+# Each thread needs its own instance of the dataloader batch callbacks
+dataloader_batch_callbacks_map: Dict[int, DataloaderBatchCallbacks] = defaultdict(
+    DataloaderBatchCallbacks
+)
 
 
 class SyncDataLoader:
@@ -41,7 +47,9 @@ class SyncDataLoader:
             needs_dispatch = not self._queue
             self._queue.append((key, future))
             if needs_dispatch:
-                dataloader_batch_callbacks.add_callback(self.dispatch_queue)
+                dataloader_batch_callbacks_map[threading.get_ident()].add_callback(
+                    self.dispatch_queue
+                )
             self._cache[key] = future
             return future
 

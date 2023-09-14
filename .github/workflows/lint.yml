@@ -1,0 +1,25 @@
+name: Lint
+
+on: [pull_request]
+
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: pipx install poetry
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: poetry install --only=dev
+      - name: mypy
+        run:
+          poetry run mypy .
+

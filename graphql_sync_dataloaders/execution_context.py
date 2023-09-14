@@ -1,3 +1,5 @@
+import threading
+from collections.abc import Collection
 from typing import (
     Any,
     AsyncIterable,
@@ -32,7 +34,7 @@ from graphql.execution.execute import get_field_def
 from graphql.execution.values import get_argument_values
 
 from .sync_future import SyncFuture
-from .sync_dataloader import dataloader_batch_callbacks
+from .sync_dataloader import dataloader_batch_callbacks_map
 
 
 PENDING_FUTURE = object()
@@ -51,7 +53,7 @@ class DeferredExecutionContext(ExecutionContext):
     ) -> Optional[AwaitableOrValue[Any]]:
         result = super().execute_operation(operation, root_value)
 
-        dataloader_batch_callbacks.run_all_callbacks()
+        dataloader_batch_callbacks_map[threading.get_ident()].run_all_callbacks()
 
         if isinstance(result, SyncFuture):
             if not result.done():
@@ -60,14 +62,14 @@ class DeferredExecutionContext(ExecutionContext):
 
         return result
 
-    def execute_fields_serially(
+    def execute_fields_serially(  # type: ignore
         self,
         parent_type: GraphQLObjectType,
         source_value: Any,
         path: Optional[Path],
         fields: Dict[str, List[FieldNode]],
     ) -> Union[AwaitableOrValue[Dict[str, Any]], SyncFuture]:
-        results: AwaitableOrValue[Dict[str, Any]] = {}
+        results: Dict[str, Any] = {}
 
         unresolved = 0
         future = SyncFuture()
@@ -83,7 +85,6 @@ class DeferredExecutionContext(ExecutionContext):
                     if result is not Undefined:
                         results[response_name] = result
                 else:
-
                     # Add placeholder so that field order is preserved
                     results[response_name] = PENDING_FUTURE
 
@@ -113,7 +114,7 @@ class DeferredExecutionContext(ExecutionContext):
 
         return future
 
-    execute_fields = execute_fields_serially
+    execute_fields = execute_fields_serially  # type: ignore
 
     def execute_field(
         self,
@@ -135,14 +136,12 @@ class DeferredExecutionContext(ExecutionContext):
             result = resolve_fn(source, info, **args)
 
             if isinstance(result, SyncFuture):
-
                 if result.done():
                     completed = self.complete_value(
                         return_type, field_nodes, info, path, result.result()
                     )
 
                 else:
-
                     # noinspection PyShadowingNames
                     def process_result(_: Any):
                         try:
@@ -150,9 +149,11 @@ class DeferredExecutionContext(ExecutionContext):
                                 return_type, field_nodes, info, path, result.result()
                             )
                             if isinstance(completed, SyncFuture):
-
                                 # noinspection PyShadowingNames
                                 def process_completed(_: Any):
+                                    assert isinstance(
+                                        completed, SyncFuture
+                                    )  # needed for mypy
                                     try:
                                         future.set_result(completed.result())
                                     except Exception as raw_error:
@@ -165,7 +166,6 @@ class DeferredExecutionContext(ExecutionContext):
                                 if completed.done():
                                     process_completed(completed.result())
                                 else:
-
                                     completed.add_done_callback(process_completed)
                             else:
                                 future.set_result(completed)
@@ -186,7 +186,6 @@ class DeferredExecutionContext(ExecutionContext):
                 )
 
             if isinstance(completed, SyncFuture):
-
                 # noinspection PyShadowingNames
                 def process_completed(_: Any):
                     try:
@@ -209,18 +208,19 @@ class DeferredExecutionContext(ExecutionContext):
             self.handle_field_error(error, return_type)
             return None
 
-    def complete_list_value(
+    def complete_list_value(  # type: ignore
         self,
         return_type: GraphQLList[GraphQLOutputType],
         field_nodes: List[FieldNode],
         info: GraphQLResolveInfo,
         path: Path,
-        result: Union[AsyncIterable[Any], Iterable[Any]],
+        result: Union[AsyncIterable[Any], Iterable[Any], SyncFuture],
     ) -> Union[AwaitableOrValue[List[Any]], SyncFuture]:
         if not is_iterable(result):
             if isinstance(result, SyncFuture):
 
                 def process_result(_: Any):
+                    assert isinstance(result, SyncFuture)  # needed for mypy
                     return self.complete_list_value(
                         return_type, field_nodes, info, path, result.result()
                     )
@@ -235,7 +235,7 @@ class DeferredExecutionContext(ExecutionContext):
                 "Expected Iterable, but did not find one for field"
                 f" '{info.parent_type.name}.{info.field_name}'."
             )
-        result = cast(Iterable[Any], result)
+        result = cast(Collection, result)
 
         item_type = return_type.of_type
         results: List[Any] = [None] * len(result)
@@ -247,7 +247,6 @@ class DeferredExecutionContext(ExecutionContext):
 
             try:
                 if isinstance(item, SyncFuture):
-
                     if item.done():
                         completed = self.complete_value(
                             item_type, field_nodes, info, item_path, item.result()
@@ -273,7 +272,6 @@ class DeferredExecutionContext(ExecutionContext):
                                     if completed.done():
                                         results[index] = completed.result()
                                     else:
-
                                         # noinspection PyShadowingNames
                                         def process_completed(
                                             index: int,
@@ -323,7 +321,6 @@ class DeferredExecutionContext(ExecutionContext):
                     )
 
                 if isinstance(completed, SyncFuture):
-
                     if completed.done():
                         results[index] = completed.result()
                     else:
