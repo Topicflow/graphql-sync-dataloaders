@@ -38,5 +38,5 @@ class Book:
 @strawberry.type
 class Query:
     @strawberry.field
-    def all_books() -> List[Book]:
+    def all_books(self) -> List[Book]:
         return [Book.from_instance(book) for book in models.Book.objects.all()]

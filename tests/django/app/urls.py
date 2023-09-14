@@ -11,7 +11,7 @@ from .strawberry_schema import Query as StrawberryQuery
 from .views import GrapheneGraphQLView, StrawberryGraphQLView
 
 graphene_schema = graphene.Schema(query=GrapheneQuery)
-strawberry_schema = strawberry.Schema(
+strawberry_schema_ = strawberry.Schema(
     query=StrawberryQuery, execution_context_class=DeferredExecutionContext
 )
 
@@ -24,5 +24,7 @@ urlpatterns = [
             )
         ),
     ),
-    path("strawberry-graphql", StrawberryGraphQLView.as_view(schema=strawberry_schema)),
+    path(
+        "strawberry-graphql", StrawberryGraphQLView.as_view(schema=strawberry_schema_)
+    ),
 ]
