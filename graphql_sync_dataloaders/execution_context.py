@@ -84,7 +84,6 @@ class DeferredExecutionContext(ExecutionContext):
                     if result is not Undefined:
                         results[response_name] = result
                 else:
-
                     # Add placeholder so that field order is preserved
                     results[response_name] = PENDING_FUTURE
 
@@ -136,14 +135,12 @@ class DeferredExecutionContext(ExecutionContext):
             result = resolve_fn(source, info, **args)
 
             if isinstance(result, SyncFuture):
-
                 if result.done():
                     completed = self.complete_value(
                         return_type, field_nodes, info, path, result.result()
                     )
 
                 else:
-
                     # noinspection PyShadowingNames
                     def process_result(_: Any):
                         try:
@@ -151,7 +148,6 @@ class DeferredExecutionContext(ExecutionContext):
                                 return_type, field_nodes, info, path, result.result()
                             )
                             if isinstance(completed, SyncFuture):
-
                                 # noinspection PyShadowingNames
                                 def process_completed(_: Any):
                                     try:
@@ -166,7 +162,6 @@ class DeferredExecutionContext(ExecutionContext):
                                 if completed.done():
                                     process_completed(completed.result())
                                 else:
-
                                     completed.add_done_callback(process_completed)
                             else:
                                 future.set_result(completed)
@@ -187,7 +182,6 @@ class DeferredExecutionContext(ExecutionContext):
                 )
 
             if isinstance(completed, SyncFuture):
-
                 # noinspection PyShadowingNames
                 def process_completed(_: Any):
                     try:
@@ -248,7 +242,6 @@ class DeferredExecutionContext(ExecutionContext):
 
             try:
                 if isinstance(item, SyncFuture):
-
                     if item.done():
                         completed = self.complete_value(
                             item_type, field_nodes, info, item_path, item.result()
@@ -274,7 +267,6 @@ class DeferredExecutionContext(ExecutionContext):
                                     if completed.done():
                                         results[index] = completed.result()
                                     else:
-
                                         # noinspection PyShadowingNames
                                         def process_completed(
                                             index: int,
@@ -324,7 +316,6 @@ class DeferredExecutionContext(ExecutionContext):
                     )
 
                 if isinstance(completed, SyncFuture):
-
                     if completed.done():
                         results[index] = completed.result()
                     else:

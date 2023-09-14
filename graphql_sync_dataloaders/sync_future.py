@@ -12,7 +12,6 @@ _FINISHED = "FINISHED"
 
 
 class SyncFuture:
-
     _state = _PENDING
     _result: Optional[Any] = None
     _exception: Optional[Exception] = None

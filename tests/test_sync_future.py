@@ -4,7 +4,6 @@ from graphql_sync_dataloaders import SyncFuture, InvalidStateError
 
 
 def test_sync_future():
-
     f = SyncFuture()
     assert not f.done()
     with pytest.raises(InvalidStateError):
