@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [main]
+    branches: [main, loft-main]
   pull_request:
     branches: [main, loft-main]
 
